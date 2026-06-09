@@ -1912,8 +1912,17 @@ function createGameEngine(db, io) {
       }
 
       monsters.delete(monsterId);
+
+      // 立即发放经验和金币
+      const expReward = Math.floor(m.level * 2);
+      const goldReward = Math.floor(m.level * 5 + Math.random() * m.level * 10);
+      p.exp += expReward;
+      p.gold += goldReward;
+      checkLevelUp(p);
+      savePlayer(p);
+
       return { damage, killed: true, monsterId, leveledUp: false, isBoss: m.isBoss,
-        exp: Math.floor(m.level * 2), gold: Math.floor(m.level * 5 + Math.random() * m.level * 10),
+        exp: expReward, gold: goldReward,
         skillId: skillId || null };
     }
 
