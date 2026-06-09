@@ -2639,6 +2639,28 @@ function createGameEngine(db, io) {
       savePlayer(p);
       return { totalGold: total, gold: p.gold };
     },
+    // 按索引回收指定物品
+    recycleItems: (socketId, indices) => {
+      const p = players.get(socketId);
+      if (!p || !p.inventory?.length || !indices?.length) return null;
+      let total = 0;
+      // 从大到小排序，防止splice后索引错位
+      const sorted = [...indices].sort((a, b) => b - a);
+      for (const idx of sorted) {
+        if (idx < 0 || idx >= p.inventory.length) continue;
+        const item = p.inventory[idx];
+        if (item.type === 'material') {
+          total += 50;
+        } else {
+          const qm = {common:1,uncommon:1.5,rare:2,epic:3,legendary:5,mythic:10,divine:20}[item.quality]||1;
+          total += Math.floor((item.levelReq||0) * 10 * qm);
+        }
+        p.inventory.splice(idx, 1);
+      }
+      p.gold += total;
+      savePlayer(p);
+      return { totalGold: total, gold: p.gold, count: sorted.length };
+    },
     // 装备突破
     breakthroughEquip: (socketId, slot) => {
       const p = players.get(socketId);
@@ -2835,20 +2857,23 @@ function createGameEngine(db, io) {
       const scrollIdx = p.inventory.findIndex(i => i.id === scroll.id);
       if (scrollIdx < 0) return { error: 'no_scroll' };
       p.inventory.splice(scrollIdx, 1);
-      // 随机鉴定属性
+      // 随机鉴定属性，单独存储
       const count = APPRAISE_COUNTS[scrollQuality];
       const ranges = APPRAISE_RANGES[scrollQuality];
       const attrs = [];
+      const appraisedStats = {};
       const shuffled = [...APPRAISE_ATTRS].sort(() => Math.random() - 0.5);
       for (let i = 0; i < count && i < shuffled.length; i++) {
         const attr = shuffled[i];
         const [min, max] = ranges[attr];
         const val = min + Math.floor(Math.random() * (max - min + 1));
         item[attr] = (item[attr] || 0) + val;
+        appraisedStats[attr] = val;
         attrs.push({ name: attr, value: val });
       }
       item.appraised = true;
       item.appraiseQuality = scrollQuality;
+      item.appraisedStats = appraisedStats;
       recalcStats(p);
       savePlayer(p);
       return { success: true, item, attrs, gold: p.gold };

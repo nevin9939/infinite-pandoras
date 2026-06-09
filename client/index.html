@@ -48,7 +48,7 @@
         <div id="dungeon-btn" title="副本"><span>🏰</span><span>副本</span></div>
         <div id="worldboss-btn" title="世界BOSS"><span>👑</span><span>BOSS</span></div>
         <div id="shop-btn" title="商店"><span>🏪</span><span>商店</span></div>
-        <div id="recycle-btn" title="一键回收"><span>♻️</span><span>回收</span></div>
+        <div id="recycle-btn" title="分类回收"><span>♻️</span><span>回收</span></div>
         <div id="trade-btn" title="交易"><span>🤝</span><span>交易</span></div>
         <div id="quest-btn" title="任务"><span>📜</span><span>任务</span></div>
         <div id="chat-toggle" title="聊天"><span>💬</span></div>
@@ -153,6 +153,78 @@
       <div id="chat-input-wrap">
         <input type="text" id="chat-input" placeholder="输入消息...">
         <button id="chat-send">发送</button>
+      </div>
+    </div>
+
+    <!-- 回收面板 -->
+    <div id="recycle-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:560px; max-height:85vh; background:#1a1a1af5; border:2px solid #555; border-radius:8px; z-index:200; overflow:hidden;">
+      <div class="panel-header">
+        <span>♻️ 分类回收</span>
+        <span class="panel-toggle" id="recycle-close">✕</span>
+      </div>
+      <!-- 类型切换 -->
+      <div style="display:flex;gap:2px;padding:6px 8px;background:#222;">
+        <button class="recycle-type-btn active" data-type="equip" style="padding:4px 12px;background:#3a3a2a;border:1px solid #d4a017;color:#d4a017;border-radius:3px;cursor:pointer;font-size:11px;">装备</button>
+        <button class="recycle-type-btn" data-type="material" style="padding:4px 12px;background:#2a2a2a;border:1px solid #444;color:#aaa;border-radius:3px;cursor:pointer;font-size:11px;">材料</button>
+      </div>
+      <!-- 装备筛选 -->
+      <div id="recycle-equip-filters" style="padding:8px; display:flex; flex-wrap:wrap; gap:6px; border-bottom:1px solid #333;">
+        <span style="color:#aaa;font-size:11px;line-height:24px;">品质：</span>
+        <label class="recycle-quality-check" style="display:flex;align-items:center;gap:3px;color:#aaa;font-size:11px;cursor:pointer;">
+          <input type="checkbox" data-quality="common" checked> 普通
+        </label>
+        <label class="recycle-quality-check" style="display:flex;align-items:center;gap:3px;color:#aaa;font-size:11px;cursor:pointer;">
+          <input type="checkbox" data-quality="uncommon" checked> 优秀
+        </label>
+        <label class="recycle-quality-check" style="display:flex;align-items:center;gap:3px;color:#aaa;font-size:11px;cursor:pointer;">
+          <input type="checkbox" data-quality="rare" checked> 稀有
+        </label>
+        <label class="recycle-quality-check" style="display:flex;align-items:center;gap:3px;color:#aaa;font-size:11px;cursor:pointer;">
+          <input type="checkbox" data-quality="epic"> 史诗
+        </label>
+        <label class="recycle-quality-check" style="display:flex;align-items:center;gap:3px;color:#aaa;font-size:11px;cursor:pointer;">
+          <input type="checkbox" data-quality="legendary"> 传说
+        </label>
+        <label class="recycle-quality-check" style="display:flex;align-items:center;gap:3px;color:#aaa;font-size:11px;cursor:pointer;">
+          <input type="checkbox" data-quality="mythic"> 神话
+        </label>
+        <label class="recycle-quality-check" style="display:flex;align-items:center;gap:3px;color:#aaa;font-size:11px;cursor:pointer;">
+          <input type="checkbox" data-quality="divine"> 仙器
+        </label>
+        <span style="color:#aaa;font-size:11px;line-height:24px;margin-left:8px;">等级≤</span>
+        <select id="recycle-level-filter" style="padding:2px 6px;background:#2a2a2a;border:1px solid #444;color:#ddd;border-radius:3px;font-size:11px;">
+          <option value="9999">不限</option>
+          <option value="10">10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+          <option value="25">25</option>
+          <option value="30">30</option>
+          <option value="35">35</option>
+          <option value="50">50</option>
+          <option value="60">60</option>
+          <option value="70">70</option>
+          <option value="80">80</option>
+          <option value="100">100</option>
+          <option value="150">150</option>
+          <option value="200">200</option>
+          <option value="250">250</option>
+          <option value="300">300</option>
+          <option value="400">400</option>
+        </select>
+      </div>
+      <!-- 材料筛选 -->
+      <div id="recycle-material-filters" style="padding:8px; display:flex; flex-wrap:wrap; gap:6px; border-bottom:1px solid #333; display:none;">
+        <span style="color:#aaa;font-size:11px;line-height:24px;">材料回收获得少量金币</span>
+      </div>
+      <div style="display:flex;gap:6px;padding:6px 8px;border-bottom:1px solid #333;">
+        <button id="recycle-select-all" style="padding:3px 10px;background:#40c040;border:none;color:#fff;border-radius:3px;cursor:pointer;font-size:11px;">全选</button>
+        <button id="recycle-deselect-all" style="padding:3px 10px;background:#555;border:none;color:#fff;border-radius:3px;cursor:pointer;font-size:11px;">全不选</button>
+        <span id="recycle-selected-count" style="color:#aaa;font-size:11px;line-height:22px;">已选: 0</span>
+        <span id="recycle-total-gold" style="color:#d4a017;font-size:11px;line-height:22px;margin-left:auto;">预计获得: 0 金币</span>
+      </div>
+      <div id="recycle-items" style="padding:8px; display:flex; flex-wrap:wrap; gap:4px; max-height:calc(85vh - 220px); overflow-y:auto;"></div>
+      <div style="padding:8px; display:flex; gap:8px; justify-content:center; border-top:1px solid #333;">
+        <button id="recycle-confirm" style="padding:6px 24px;background:#d4a017;border:none;color:#fff;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;">确认回收</button>
       </div>
     </div>
 

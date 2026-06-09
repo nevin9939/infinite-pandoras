@@ -1785,15 +1785,132 @@ function formatGemStats(item) {
   return s.join(' ');
 }
 
-function recycleAll() {
-  if (!state.player?.inventory?.length) { addMessage('背包为空', 'msg-exp'); return; }
-  let total = 0;
-  state.player.inventory.forEach(item => {
-    const qualityMult = {common:1,uncommon:1.5,rare:2,epic:3,legendary:5}[item.quality]||1;
-    total += Math.floor(item.levelReq * 10 * qualityMult);
+// ===== 分类回收 =====
+let recycleSelectedItems = new Set();
+let recycleType = 'equip'; // 'equip' | 'material'
+
+function openRecyclePanel() {
+  recycleSelectedItems.clear();
+  recycleType = 'equip';
+  const panel = document.getElementById('recycle-panel');
+  panel.style.display = 'block';
+  // 默认装备模式
+  document.querySelectorAll('.recycle-type-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.type === 'equip');
   });
-  socket.emit('recycle_all');
-  addMessage(`一键回收获得 ${total} 金币`, 'msg-gold');
+  document.getElementById('recycle-equip-filters').style.display = 'flex';
+  document.getElementById('recycle-material-filters').style.display = 'none';
+  // 重置品质筛选：默认只选普通、优秀、稀有
+  document.querySelectorAll('#recycle-equip-filters input[type=checkbox]').forEach(cb => {
+    const q = cb.dataset.quality;
+    cb.checked = ['common','uncommon','rare'].includes(q);
+  });
+  document.getElementById('recycle-level-filter').value = '999';
+  renderRecycleItems();
+}
+
+function closeRecyclePanel() {
+  document.getElementById('recycle-panel').style.display = 'none';
+}
+
+function renderRecycleItems() {
+  const container = document.getElementById('recycle-items');
+  if (!state.player?.inventory?.length) {
+    container.innerHTML = '<div style="color:#555;padding:8px;font-size:12px;width:100%;text-align:center;">背包为空</div>';
+    updateRecycleSummary();
+    return;
+  }
+
+  let filtered;
+  if (recycleType === 'equip') {
+    const selectedQualities = new Set();
+    document.querySelectorAll('#recycle-equip-filters input[type=checkbox]').forEach(cb => {
+      if (cb.checked) selectedQualities.add(cb.dataset.quality);
+    });
+    const maxLevel = parseInt(document.getElementById('recycle-level-filter').value) || 999;
+    filtered = state.player.inventory
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => {
+        // 排除药水、任务物品等
+        if (item.type === 'potion' || item.type === 'quest') return false;
+        if (!selectedQualities.has(item.quality)) return false;
+        if ((item.levelReq || 0) > maxLevel) return false;
+        return true;
+      });
+  } else {
+    // 材料模式：只显示 type === 'material' 的物品
+    filtered = state.player.inventory
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => item.type === 'material');
+  }
+
+  container.innerHTML = '';
+  recycleSelectedItems.clear();
+
+  if (!filtered.length) {
+    container.innerHTML = `<div style="color:#555;padding:8px;font-size:12px;width:100%;text-align:center;">没有可回收的${recycleType === 'equip' ? '装备' : '材料'}</div>`;
+    updateRecycleSummary();
+    return;
+  }
+
+  filtered.forEach(({ item, idx }) => {
+    const div = document.createElement('div');
+    const color = state.equipInfo?.qualityColors?.[item.quality] || '#aaa';
+    const isMat = item.type === 'material';
+    div.style.cssText = `padding:6px 10px;min-width:100px;background:#2a2a2a;border:2px solid #444;border-radius:3px;cursor:pointer;font-size:11px;position:relative;`;
+    if (isMat) {
+      div.innerHTML = `<div style="color:#cc88ff;font-weight:bold;">${item.name}</div><div style="color:#888;font-size:10px;">突破材料</div>`;
+    } else {
+      div.innerHTML = `<div style="color:${color};font-weight:bold;">${item.name}</div><div style="color:#888;font-size:10px;">Lv.${item.levelReq||0} ${item.quality}</div>`;
+    }
+    div.dataset.idx = idx;
+    div.addEventListener('click', () => {
+      div.classList.toggle('selected');
+      if (div.classList.contains('selected')) {
+        div.style.borderColor = '#40c040';
+        div.style.background = '#2a3a2a';
+        recycleSelectedItems.add(idx);
+      } else {
+        div.style.borderColor = '#444';
+        div.style.background = '#2a2a2a';
+        recycleSelectedItems.delete(idx);
+      }
+      updateRecycleSummary();
+    });
+    container.appendChild(div);
+  });
+  updateRecycleSummary();
+}
+
+function updateRecycleSummary() {
+  const countEl = document.getElementById('recycle-selected-count');
+  const goldEl = document.getElementById('recycle-total-gold');
+  if (!countEl || !goldEl) return;
+  countEl.textContent = `已选: ${recycleSelectedItems.size}`;
+  let total = 0;
+  recycleSelectedItems.forEach(idx => {
+    const item = state.player?.inventory?.[idx];
+    if (!item) return;
+    if (item.type === 'material') {
+      // 材料回收：每个材料少量金币
+      total += 50;
+    } else {
+      const qm = {common:1,uncommon:1.5,rare:2,epic:3,legendary:5,mythic:10,divine:20}[item.quality]||1;
+      total += Math.floor((item.levelReq||0) * 10 * qm);
+    }
+  });
+  goldEl.textContent = `预计获得: ${total} 金币`;
+}
+
+function confirmRecycle() {
+  if (!recycleSelectedItems.size) { addMessage('请选择要回收的装备', 'msg-system'); return; }
+  const indices = [...recycleSelectedItems].sort((a, b) => b - a); // 从大到小，防止splice后索引错位
+  socket.emit('recycle_items', { indices });
+  closeRecyclePanel();
+}
+
+function recycleAll() {
+  openRecyclePanel();
 }
 
 // ===== 仓库系统 =====
@@ -2064,16 +2181,15 @@ function formatItemStats(item) {
   if (item.hp) s.push(`生命 +${item.hp}`);
   if (item.mp) s.push(`魔法 +${item.mp}`);
   if (item.lucky) s.push(`幸运 +${item.lucky}`);
-  // 鉴定属性
-  if (item.appraised && item.appraiseQuality) {
-    const aParts = [];
-    if (item.attack) aParts.push(`攻+${item.attack}`);
-    if (item.defense) aParts.push(`防+${item.defense}`);
-    if (item.hp) aParts.push(`HP+${item.hp}`);
-    if (item.mp) aParts.push(`MP+${item.mp}`);
-    if (item.lucky) aParts.push(`幸运+${item.lucky}`);
+  // 鉴定属性（单独显示）
+  if (item.appraised && item.appraiseQuality && item.appraisedStats) {
     const qNames = {1:'普通',2:'高级',3:'至尊'};
-    s.push(`<span style="color:#ffcc00">[鉴定(${qNames[item.appraiseQuality]})]</span>`);
+    const aParts = [];
+    const attrNames = {attack:'攻',defense:'防',hp:'HP',mp:'MP',lucky:'幸运'};
+    for (const [attr, val] of Object.entries(item.appraisedStats)) {
+      aParts.push(`${attrNames[attr]||attr}+${val}`);
+    }
+    s.push(`<span style="color:#ffcc00">[鉴定(${qNames[item.appraiseQuality]})] ${aParts.join(' ')}</span>`);
   }
   // 强化信息
   if (item.enhanceLevel > 0) {
@@ -2282,6 +2398,35 @@ document.getElementById('exit-dungeon-btn').addEventListener('click', () => { so
 document.getElementById('shop-btn').addEventListener('click', () => openShop('potion'));
 
 document.getElementById('recycle-btn').addEventListener('click', () => recycleAll());
+
+// 回收面板事件
+document.getElementById('recycle-close').addEventListener('click', closeRecyclePanel);
+document.getElementById('recycle-confirm').addEventListener('click', confirmRecycle);
+document.getElementById('recycle-select-all').addEventListener('click', () => {
+  document.querySelectorAll('#recycle-items .inv-item, #recycle-items div[data-idx]').forEach(d => {
+    if (!d.classList.contains('selected')) d.click();
+  });
+});
+document.getElementById('recycle-deselect-all').addEventListener('click', () => {
+  document.querySelectorAll('#recycle-items div.selected').forEach(d => d.click());
+});
+// 品质筛选变化
+document.querySelectorAll('#recycle-equip-filters input[type=checkbox]').forEach(cb => {
+  cb.addEventListener('change', renderRecycleItems);
+});
+document.getElementById('recycle-level-filter').addEventListener('change', renderRecycleItems);
+// 类型切换
+document.querySelectorAll('.recycle-type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.recycle-type-btn').forEach(b => {
+      b.classList.toggle('active', b === btn);
+    });
+    recycleType = btn.dataset.type;
+    document.getElementById('recycle-equip-filters').style.display = recycleType === 'equip' ? 'flex' : 'none';
+    document.getElementById('recycle-material-filters').style.display = recycleType === 'material' ? 'flex' : 'none';
+    renderRecycleItems();
+  });
+});
 
 document.getElementById('worldboss-btn').addEventListener('click', () => {
   const panel = document.getElementById('worldboss-panel');
@@ -2938,10 +3083,9 @@ socket.on('sell_success', r => {
 });
 
 socket.on('recycle_success', r => {
-  addMessage('回收成功','msg-gold');
+  addMessage(`回收 ${r.count || '全部'} 件物品，获得 ${r.totalGold || 0} 金币`,'msg-gold');
   if (state.player) {
     state.player.gold = r.gold || 0;
-    state.player.inventory = [];
     updateHUD();
     updateAttrPanel();
     updateInventory();

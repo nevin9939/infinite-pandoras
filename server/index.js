@@ -68,6 +68,7 @@ async function start() {
       if (r) socket.emit('sell_success', r);
     });
     socket.on('recycle_all', () => { const r = engine.recycleAll(socket.id); if(r) socket.emit('recycle_success', r); });
+    socket.on('recycle_items', data => { const r = engine.recycleItems(socket.id, data?.indices); if(r) socket.emit('recycle_success', r); });
 
     socket.on('buy_item', itemId => {
       const p = engine.getPlayerBySocket(socket.id);
