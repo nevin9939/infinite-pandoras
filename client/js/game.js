@@ -2419,7 +2419,18 @@ document.getElementById('recycle-level-filter').addEventListener('change', rende
 document.querySelectorAll('.recycle-type-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.recycle-type-btn').forEach(b => {
-      b.classList.toggle('active', b === btn);
+      const isActive = b === btn;
+      b.classList.toggle('active', isActive);
+      // 切换内联样式
+      if (isActive) {
+        b.style.background = '#3a3a2a';
+        b.style.borderColor = '#d4a017';
+        b.style.color = '#d4a017';
+      } else {
+        b.style.background = '#2a2a2a';
+        b.style.borderColor = '#444';
+        b.style.color = '#aaa';
+      }
     });
     recycleType = btn.dataset.type;
     document.getElementById('recycle-equip-filters').style.display = recycleType === 'equip' ? 'flex' : 'none';
