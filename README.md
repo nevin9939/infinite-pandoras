@@ -53,6 +53,12 @@ node server/index.js
 
 浏览器访问 http://localhost:3000，输入角色名、选择职业，即刻开始冒险。
 
+## 在线体验
+
+🎮 [在线试玩](https://infinite-pandoras.onrender.com/)
+
+> 部署于 Render 免费实例，首次访问可能需要几秒唤醒时间。
+
 ## 游戏特色
 
 ### 三职业体系
