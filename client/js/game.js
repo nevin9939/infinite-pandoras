@@ -1977,7 +1977,12 @@ function renderEquipTab(tab) {
     if (item) {
       const color = state.equipInfo.qualityColors?.[item.quality] || '#aaa';
       const stats = formatItemStats(item);
-      div.innerHTML = `<div class="slot-name">${name}</div><div class="item-name" style="color:${color}">${item.name}</div><div class="equip-tooltip"><div class="equip-tooltip-header" style="color:${color}">${item.name}</div><div class="equip-tooltip-stats">${stats}</div><div class="equip-tooltip-hint">点击卸下</div></div>`;
+      const btLevel = item.breakthroughLevel || 0;
+      const btHtml = btLevel > 0 ? `<div style="color:#ffcc00;font-size:11px">⚡ 突破 +${btLevel}</div>` : '';
+      const bonusHtml = (item.bonusAttrs && item.bonusAttrs.length > 0) ? item.bonusAttrs.map(a =>
+        `<div style="color:#cc88ff;font-size:10px">${a.name} +${a.value}</div>`
+      ).join('') : '';
+      div.innerHTML = `<div class="slot-name">${name}</div><div class="item-name" style="color:${color}">${item.name}${btLevel > 0 ? ` <span style="color:#ffcc00">⚡${btLevel}</span>` : ''}</div><div class="equip-tooltip"><div class="equip-tooltip-header" style="color:${color}">${item.name}</div>${btHtml}<div class="equip-tooltip-stats">${stats}</div>${bonusHtml}<div class="equip-tooltip-hint">点击卸下</div></div>`;
       div.addEventListener('pointerdown', e => { e.preventDefault(); socket.emit('unequip', slot); });
     } else {
       div.innerHTML = `<div class="slot-name">${name}</div><div class="item-name" style="color:#555">空</div>`;
@@ -2157,7 +2162,12 @@ function getItemTooltipHTML(item) {
   }
 
   const enhanceText = item.enhanceLevel > 0 ? `<span class="equip-tooltip-enhance" style="color:#ff8800">✨ 强化 +${item.enhanceLevel}</span>` : '';
-  return `<div class="equip-tooltip"><span class="equip-tooltip-header" style="color:${color}">${item.name}${item.enhanceLevel > 0 ? ` +${item.enhanceLevel}` : ''}</span><span class="equip-tooltip-level">需要等级: ${item.levelReq}</span>${enhanceText}<span class="equip-tooltip-stats">${stats}</span>${compare}</div>`;
+  const btLevel = item.breakthroughLevel || 0;
+  const btText = btLevel > 0 ? `<span class="equip-tooltip-enhance" style="color:#ffcc00">⚡ 突破 +${btLevel}</span>` : '';
+  const bonusText = (item.bonusAttrs && item.bonusAttrs.length > 0) ? item.bonusAttrs.map(a =>
+    `<span style="color:#cc88ff;font-size:11px">${a.name} +${a.value}</span>`
+  ).join('') : '';
+  return `<div class="equip-tooltip"><span class="equip-tooltip-header" style="color:${color}">${item.name}${item.enhanceLevel > 0 ? ` +${item.enhanceLevel}` : ''}</span><span class="equip-tooltip-level">需要等级: ${item.levelReq}</span>${enhanceText}${btText}<span class="equip-tooltip-stats">${stats}</span>${bonusText ? `<span class="equip-tooltip-gems">${bonusText}</span>` : ''}${compare}</div>`;
 }
 
 // 检查背包物品是否比当前装备的属性更好

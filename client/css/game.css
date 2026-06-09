@@ -98,7 +98,7 @@ body { background: #0a0a0a; overflow: hidden; font-family: 'Microsoft YaHei', sa
 #inventory-panel::-webkit-scrollbar-track { background: transparent; }
 #inventory-panel::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
 #inventory-panel::-webkit-scrollbar-thumb:hover { background: #888; }
-#inv-items { padding: 8px; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-start; }
+#inv-items { padding: 8px; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-start; max-height: calc(80vh - 40px); overflow-y: auto; }
 .inv-item { padding: 6px 10px; width: 68px; background: #2a2a2a; border: 1px solid #444; border-radius: 3px; cursor: pointer; font-size: 10px; position: relative; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inv-item:hover { border-color: #d4a017; background: #3a3a2a; }
 .inv-item .item-name { font-weight: bold; font-size: 11px; }

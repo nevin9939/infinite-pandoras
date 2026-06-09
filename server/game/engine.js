@@ -168,10 +168,10 @@ const RED_NAME_DROP_RATE = 0.3; // 红名被击杀掉落装备概率
 // ===== 无尽副本 =====
 const ENDLESS_DUNGEON = {
   baseLevel: 50,         // 起始怪物等级
-  levelScale: 1.12,      // 每层怪物等级增长12%
-  hpScale: 1.15,         // 每层怪物血量增长15%
-  atkScale: 1.12,        // 每层攻击力增长12%
-  defScale: 1.10,        // 每层防御增长10%
+  levelScale: 1.10,      // 每层怪物等级增长10%
+  hpScale: 1.18,         // 每层怪物血量增长18%
+  atkScale: 1.15,        // 每层攻击力增长15%
+  defScale: 1.14,        // 每层防御增长14%
   rewardScale: 1.08,     // 每层奖励增长8%
   bossEvery: 10,         // 每10层一个BOSS
   monsterCount: 25,      // 每层怪物数量
@@ -1670,9 +1670,9 @@ function createGameEngine(db, io) {
     const monstersList = [];
     const baseLevel = ENDLESS_DUNGEON.baseLevel;
     const monsterLevel = Math.floor(baseLevel * Math.pow(ENDLESS_DUNGEON.levelScale, layer - 1));
-    const monsterHp = Math.floor(50 * Math.pow(ENDLESS_DUNGEON.hpScale, layer - 1));
-    const monsterAtk = Math.floor(5 * Math.pow(ENDLESS_DUNGEON.atkScale, layer - 1));
-    const monsterDef = Math.floor(2 * Math.pow(ENDLESS_DUNGEON.defScale, layer - 1));
+    const monsterHp = Math.floor(200 * Math.pow(ENDLESS_DUNGEON.hpScale, layer - 1));
+    const monsterAtk = Math.floor(15 * Math.pow(ENDLESS_DUNGEON.atkScale, layer - 1));
+    const monsterDef = Math.floor(8 * Math.pow(ENDLESS_DUNGEON.defScale, layer - 1));
 
     for (let i = 0; i < ENDLESS_DUNGEON.monsterCount; i++) {
       const mId = `${instanceId}_m_${i}`;
@@ -1699,7 +1699,7 @@ function createGameEngine(db, io) {
       monsters.set(bossId, {
         id: bossId, name: `无尽领主·第${layer}层`, level: bossLevel,
         hp: bossHp, maxHp: bossHp, attack: bossAtk, defense: bossDef,
-        exp: Math.floor(bossLevel * 10), goldMin: Math.floor(bossLevel * 5), goldMax: Math.floor(bossLevel * 10),
+        exp: Math.floor(bossLevel * 10), goldMin: Math.floor(bossLevel * 20), goldMax: Math.floor(bossLevel * 50),
         x: 40, y: 20, speed: 0.4, targetX: null, targetY: null,
         moveTimer: 0, attackCooldown: 0, mapId: instanceId,
         isDungeon: true, isBoss: true,
@@ -1833,7 +1833,7 @@ function createGameEngine(db, io) {
         if (instance.monstersLeft <= 0) {
           console.log(`[Endless] >>> Layer ${instance.layer} cleared! Entering next layer...`);
           const expReward = Math.floor(50 * Math.pow(1.05, instance.layer - 1));
-          const goldReward = Math.floor(100 * Math.pow(1.08, instance.layer - 1));
+          const goldReward = Math.floor(500 * Math.pow(1.12, instance.layer - 1));
           p.exp += expReward;
           p.gold += goldReward;
           checkLevelUp(p);
@@ -1857,10 +1857,9 @@ function createGameEngine(db, io) {
             const monstersList = [];
             const baseLevel = ENDLESS_DUNGEON.baseLevel;
             const monsterLevel = Math.floor(baseLevel * Math.pow(ENDLESS_DUNGEON.levelScale, nextLayer - 1));
-            const monsterHp = Math.floor(50 * Math.pow(ENDLESS_DUNGEON.hpScale, nextLayer - 1));
-            const monsterAtk = Math.floor(5 * Math.pow(ENDLESS_DUNGEON.atkScale, nextLayer - 1));
-            const monsterDef = Math.floor(2 * Math.pow(ENDLESS_DUNGEON.defScale, nextLayer - 1));
-
+            const monsterHp = Math.floor(200 * Math.pow(ENDLESS_DUNGEON.hpScale, nextLayer - 1));
+            const monsterAtk = Math.floor(15 * Math.pow(ENDLESS_DUNGEON.atkScale, nextLayer - 1));
+            const monsterDef = Math.floor(8 * Math.pow(ENDLESS_DUNGEON.defScale, nextLayer - 1));
             for (let i = 0; i < ENDLESS_DUNGEON.monsterCount; i++) {
               const mId = `${state.instanceId}_m2_${i}`;
               monsters.set(mId, {
@@ -1885,7 +1884,7 @@ function createGameEngine(db, io) {
               monsters.set(bossId2, {
                 id: bossId2, name: `无尽领主·第${nextLayer}层`, level: bossLevel2,
                 hp: bossHp2, maxHp: bossHp2, attack: bossAtk2, defense: bossDef2,
-                exp: Math.floor(bossLevel2 * 10), goldMin: Math.floor(bossLevel2 * 5), goldMax: Math.floor(bossLevel2 * 10),
+                exp: Math.floor(bossLevel2 * 10), goldMin: Math.floor(bossLevel2 * 20), goldMax: Math.floor(bossLevel2 * 50),
                 x: 40, y: 20, speed: 0.4, targetX: null, targetY: null,
                 moveTimer: 0, attackCooldown: 0, mapId: state.instanceId,
                 isDungeon: true, isBoss: true,
@@ -1914,7 +1913,7 @@ function createGameEngine(db, io) {
 
       monsters.delete(monsterId);
       return { damage, killed: true, monsterId, leveledUp: false, isBoss: m.isBoss,
-        exp: Math.floor(m.level * 2), gold: Math.floor(m.level + Math.random() * m.level),
+        exp: Math.floor(m.level * 2), gold: Math.floor(m.level * 5 + Math.random() * m.level * 10),
         skillId: skillId || null };
     }
 
