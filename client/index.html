@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>无限世界</title>
+  <link rel="stylesheet" href="css/game.css?v=9">
+</head>
+<body>
+  <div id="login-screen">
+    <div class="login-box">
+      <h1>无限世界</h1>
+      <p class="subtitle">网页版</p>
+      <input type="text" id="username" placeholder="输入角色名称" maxlength="16" autofocus>
+      <div id="class-select">
+        <p class="select-label">选择职业</p>
+        <div class="class-options">
+          <div class="class-option selected" data-class="warrior"><div class="class-icon warrior-icon">⚔</div><div class="class-name">战士</div><div class="class-desc">高血量·近战·强防御</div></div>
+          <div class="class-option" data-class="mage"><div class="class-icon mage-icon">🔮</div><div class="class-name">法师</div><div class="class-desc">高魔法·远程·强输出</div></div>
+          <div class="class-option" data-class="taoist"><div class="class-icon taoist-icon">☯</div><div class="class-name">道士</div><div class="class-desc">均衡·治疗·召唤</div></div>
+        </div>
+      </div>
+      <button id="login-btn">开始游戏</button>
+    </div>
+  </div>
+
+  <div id="game-screen" style="display:none;">
+    <canvas id="game-canvas"></canvas>
+
+    <div id="top-bar">
+      <div id="hud">
+        <div id="hud-left">
+          <div id="connection-status"><span id="conn-dot"></span><span id="conn-text">连接中...</span></div>
+          <div id="player-info-bar">
+            <span id="player-name"></span><span id="player-class"></span><span id="player-level"></span><span id="player-stats"></span>
+          </div>
+          <div id="map-info" style="color:#aaa;font-size:12px;">地图: <span id="current-map" style="color:#d4a017">比奇城</span></div>
+        </div>
+      </div>
+
+      <div id="target-info" style="display:none;">
+        <span id="target-name"></span>
+        <div class="bar-row small"><div class="bar-bg"><div id="target-hp-bar" class="bar hp"></div></div></div>
+      </div>
+
+      <div id="top-buttons">
+        <div id="afk-btn" title="挂机自动打怪"><span>🤖</span><span>挂机</span></div>
+        <div id="dungeon-btn" title="副本"><span>🏰</span><span>副本</span></div>
+        <div id="worldboss-btn" title="世界BOSS"><span>👑</span><span>BOSS</span></div>
+        <div id="shop-btn" title="商店"><span>🏪</span><span>商店</span></div>
+        <div id="recycle-btn" title="一键回收"><span>♻️</span><span>回收</span></div>
+        <div id="trade-btn" title="交易"><span>🤝</span><span>交易</span></div>
+        <div id="quest-btn" title="任务"><span>📜</span><span>任务</span></div>
+        <div id="chat-toggle" title="聊天"><span>💬</span></div>
+        <div id="map-btn" title="切换地图"><span>🗺️</span><span>地图</span></div>
+      </div>
+    </div>
+
+    <!-- 底部经验条 -->
+    <div id="exp-bar-bottom">
+      <span class="bar-label">EXP</span><div class="bar-bg"><div id="exp-bar" class="bar exp"></div></div><span id="exp-text" class="bar-text"></span>
+    </div>
+
+    <!-- 技能栏 + HP/MP -->
+    <div id="bottom-bar">
+      <div id="hp-mp-bars">
+        <div class="bar-row"><span class="bar-label">HP</span><div class="bar-bg"><div id="hp-bar" class="bar hp"></div></div><span id="hp-text" class="bar-text"></span></div>
+        <div class="bar-row"><span class="bar-label">MP</span><div class="bar-bg"><div id="mp-bar" class="bar mp"></div></div><span id="mp-text" class="bar-text"></span></div>
+      </div>
+      <div id="skill-bar"><div id="skills"></div></div>
+    </div>
+
+    <div id="attr-panel">
+      <div class="panel-header"><span>人物属性</span><span class="panel-toggle" id="attr-toggle">收起</span></div>
+      <div id="attr-content">
+        <div class="attr-row"><span class="attr-label">等级</span><span class="attr-value" id="attr-level">1</span></div>
+        <div class="attr-row" id="attr-rebirth-row" style="display:none"><span class="attr-label">境界</span><span class="attr-value" id="attr-rebirth">-</span></div>
+        <div class="attr-row"><span class="attr-label">攻击</span><span class="attr-value" id="attr-atk">15</span></div>
+        <div class="attr-row"><span class="attr-label">防御</span><span class="attr-value" id="attr-def">10</span></div>
+        <div class="attr-row"><span class="attr-label">生命</span><span class="attr-value" id="attr-hp">150/150</span></div>
+        <div class="attr-row"><span class="attr-label">魔法</span><span class="attr-value" id="attr-mp">30/30</span></div>
+        <div class="attr-row"><span class="attr-label">经验</span><span class="attr-value" id="attr-exp">0/100</span></div>
+        <div class="attr-row"><span class="attr-label">金币</span><span class="attr-value attr-gold" id="attr-gold">0</span></div>
+        <div id="rebirth-btn-container"></div>
+      </div>
+    </div>
+
+    <div id="equip-panel">
+      <div class="panel-header"><span>装备</span><span class="panel-toggle" id="equip-toggle">收起</span></div>
+      <div id="equip-tabs" style="display:flex;gap:2px;padding:4px;background:#222;">
+        <div class="equip-tab active" data-tab="default">默认</div>
+        <div class="equip-tab" data-tab="zodiac">生肖</div>
+        <div class="equip-tab" data-tab="wuxing">五行</div>
+      </div>
+      <div id="equip-slots"></div>
+      <div id="set-bonus-items"></div>
+    </div>
+
+    <div id="inventory-panel">
+      <div class="panel-header"><span>背包</span><span class="panel-toggle" id="inv-close">关闭</span></div>
+      <div id="inv-items"></div>
+    </div>
+
+    <div id="dungeon-panel" style="display:none;">
+      <div class="panel-header"><span>副本入口</span><span class="panel-toggle" id="dungeon-close">关闭</span></div>
+      <div id="dungeon-list"></div>
+      <div id="dungeon-state" style="display:none;">
+        <div class="panel-header"><span id="dungeon-name-text"></span><span class="panel-toggle" id="exit-dungeon-btn">退出副本</span></div>
+        <div id="dungeon-monsters"></div>
+        <div id="dungeon-progress"></div>
+      </div>
+    </div>
+
+    <div id="shop-panel" style="display:none;">
+      <div class="panel-header"><span id="shop-title">商店</span><span class="panel-toggle" id="shop-close">关闭</span></div>
+      <div id="shop-tabs"></div>
+      <div id="shop-items"></div>
+      <div id="shop-sell" style="display:none;"><div id="sell-items"></div></div>
+    </div>
+
+    <div id="npc-panel" style="display:none;">
+      <div class="panel-header"><span id="npc-name"></span><span class="panel-toggle" id="npc-close">关闭</span></div>
+      <div id="npc-content"></div>
+    </div>
+
+    <!-- 交易面板 -->
+    <div id="trade-panel" style="display:none;">
+      <div class="panel-header"><span>玩家交易</span><span class="panel-toggle" id="trade-close">关闭</span></div>
+      <div id="trade-info">与 <span id="trade-partner"></span> 交易</div>
+      <div id="trade-my-offer"><div class="trade-label">我的出价</div><div id="trade-my-items"></div><div id="trade-gold-input"><input type="number" id="trade-gold-amount" placeholder="金币" min="0"><button id="trade-add-gold">添加</button></div></div>
+      <div id="trade-their-offer"><div class="trade-label">对方出价</div><div id="trade-their-items"></div><div id="trade-their-gold">0 💰</div></div>
+      <div id="trade-buttons"><button id="trade-lock">锁定</button><button id="trade-confirm">确认交易</button></div>
+    </div>
+
+    <!-- 任务面板 -->
+    <div id="quest-panel" style="display:none;">
+      <div class="panel-header"><span>任务</span><span class="panel-toggle" id="quest-close">关闭</span></div>
+      <div id="quest-list"></div>
+      <div id="quest-detail"></div>
+    </div>
+
+    <!-- 称号显示 -->
+    <div id="title-display" style="display:none;">
+      <span id="current-title"></span>
+    </div>
+
+    <div id="chat-panel">
+      <div id="chat-tabs">
+        <div class="chat-tab active" data-tab="world">世界</div>
+        <div class="chat-tab" data-tab="system">系统</div>
+      </div>
+      <div id="chat-messages"></div>
+      <div id="chat-input-wrap">
+        <input type="text" id="chat-input" placeholder="输入消息...">
+        <button id="chat-send">发送</button>
+      </div>
+    </div>
+
+    <div id="skill-bar"><div id="skills"></div></div>
+    <div id="messages"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/game.js?v=48"></script>
+</body>
+</html>

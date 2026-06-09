@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head><title>移动测试</title></head>
+<body>
+<h1>移动测试</h1>
+<div id="status">连接中...</div>
+<div id="pos"></div>
+<button id="login-btn">登录</button>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let player = null;
+const keys = {};
+
+document.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  document.getElementById('status').textContent = '按键: ' + e.key;
+});
+document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+socket.on('login_success', p => {
+  player = p;
+  document.getElementById('status').textContent = '登录成功! 位置: ' + p.x + ',' + p.y;
+  document.getElementById('login-btn').style.display = 'none';
+});
+socket.on('classes_info', () => {});
+socket.on('equip_info', () => {});
+socket.on('dungeon_info', () => {});
+socket.on('attack_result', () => {});
+socket.on('world_state', data => {
+  if (player) {
+    const me = data.players.find(p => p.id === player.id);
+    if (me) {
+      player.x = me.x; player.y = me.y;
+      document.getElementById('pos').textContent = '服务器位置: x=' + me.x.toFixed(2) + ' y=' + me.y.toFixed(2);
+    }
+  }
+});
+
+document.getElementById('login-btn').addEventListener('click', () => {
+  socket.emit('login', { username: 'move_debug', playerClass: 'warrior' });
+});
+
+// 模拟 WASD 移动
+setInterval(() => {
+  if (!player) return;
+  const speed = 0.3;
+  let moved = false;
+  let { x, y } = player;
+  if (keys['w'] || keys['arrowup']) { y -= speed; moved = true; }
+  if (keys['s'] || keys['arrowdown']) { y += speed; moved = true; }
+  if (keys['a'] || keys['arrowleft']) { x -= speed; moved = true; }
+  if (keys['d'] || keys['arrowright']) { x += speed; moved = true; }
+  if (moved) {
+    player.x = Math.max(2, Math.min(98, x));
+    player.y = Math.max(2, Math.min(78, y));
+    socket.emit('move', { x: player.x, y: player.y });
+    document.getElementById('status').textContent = '移动中: x=' + player.x.toFixed(2) + ' y=' + player.y.toFixed(2);
+  }
+}, 50);
+</script>
+</body>
+</html>

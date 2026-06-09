@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head><title>Debug - 移动测试</title>
+<style>
+  body { background: #111; color: #fff; font-family: monospace; padding: 20px; }
+  #log { background: #222; padding: 10px; max-height: 300px; overflow-y: auto; font-size: 13px; }
+  .log-entry { border-bottom: 1px solid #333; padding: 2px 0; }
+  .log-key { color: #40c040; }
+  .log-move { color: #4488ff; }
+  .log-state { color: #d4a017; }
+</style>
+</head>
+<body>
+<h1>移动调试</h1>
+<div id="status">点击页面后按 WASD</div>
+<div id="player-pos">位置: x=0, y=0</div>
+<div id="state-info">state.player: null | state.running: false</div>
+<div id="log"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let player = null;
+let running = false;
+let keys = {};
+const log = document.getElementById('log');
+
+function addLog(text, cls) {
+  const div = document.createElement('div');
+  div.className = 'log-entry ' + (cls || '');
+  div.textContent = text;
+  log.prepend(div);
+  if (log.children.length > 50) log.removeChild(log.lastChild);
+}
+
+socket.on('connect', () => { addLog('Socket 连接成功', 'log-state'); });
+socket.on('disconnect', () => { addLog('Socket 断开', 'log-state'); });
+
+socket.on('login_success', (p) => {
+  player = p;
+  running = true;
+  addLog('登录成功: ' + p.username + ' pos=(' + p.x + ',' + p.y + ')', 'log-state');
+  document.getElementById('player-pos').textContent = '位置: x=' + p.x + ', y=' + p.y;
+  document.getElementById('state-info').textContent = 'state.player: ' + p.username + ' | state.running: true';
+});
+
+socket.on('classes_info', () => {});
+socket.on('equip_info', () => {});
+socket.on('dungeon_info', () => {});
+
+socket.on('world_state', (data) => {
+  if (player) {
+    const me = data.players.find(p => p.id === player.id);
+    if (me) {
+      player.x = me.x;
+      player.y = me.y;
+      document.getElementById('player-pos').textContent = '位置: x=' + me.x.toFixed(2) + ', y=' + me.y.toFixed(2);
+    }
+  }
+});
+
+socket.on('attack_result', () => {});
+socket.on('player_damaged', () => {});
+
+// 输入处理
+document.addEventListener('keydown', (e) => {
+  keys[e.key.toLowerCase()] = true;
+  addLog('按键按下: ' + e.key, 'log-key');
+  updateStatus();
+});
+document.addEventListener('keyup', (e) => {
+  keys[e.key.toLowerCase()] = false;
+  addLog('按键释放: ' + e.key, 'log-key');
+  updateStatus();
+});
+
+function updateStatus() {
+  const activeKeys = Object.keys(keys).filter(k => keys[k]);
+  document.getElementById('status').textContent = '按下的键: ' + (activeKeys.join(', ') || '无');
+}
+
+// 移动循环
+setInterval(() => {
+  if (!player || !running) return;
+  const speed = 0.3;
+  let moved = false;
+  let { x, y } = player;
+  if (keys['w'] || keys['arrowup']) { y -= speed; moved = true; }
+  if (keys['s'] || keys['arrowdown']) { y += speed; moved = true; }
+  if (keys['a'] || keys['arrowleft']) { x -= speed; moved = true; }
+  if (keys['d'] || keys['arrowright']) { x += speed; moved = true; }
+  if (moved) {
+    x = Math.max(2, Math.min(98, x));
+    y = Math.max(2, Math.min(78, y));
+    player.x = x;
+    player.y = y;
+    socket.emit('move', { x, y });
+    addLog('移动: x=' + x.toFixed(2) + ' y=' + y.toFixed(2), 'log-move');
+  }
+}, 50);
+
+// 自动登录
+socket.emit('login', { username: 'debug_user', playerClass: 'warrior' });
+</script>
+</body>
+</html>

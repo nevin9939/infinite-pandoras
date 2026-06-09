@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>极简移动测试</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #111; color: #fff; font-family: monospace; }
+  #hud { position: absolute; top: 10px; left: 10px; z-index: 10; }
+  #hud div { margin-bottom: 4px; }
+  .log { color: #4488ff; }
+  .key { color: #40c040; }
+  canvas { display: block; background: #222; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div id="status">等待登录...</div>
+  <div id="pos">位置: 50, 50</div>
+  <div id="keys">按键: 无</div>
+  <div id="log" style="color:#aaa;max-height:200px;overflow-y:auto"></div>
+</div>
+<canvas id="game-canvas"></canvas>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize);
+resize();
+
+const state = {
+  player: null, running: false, keys: {}, monsters: [], camera: {x:0, y:0}
+};
+
+function log(text, cls) {
+  const d = document.createElement('div');
+  d.className = cls || 'log';
+  d.textContent = text;
+  document.getElementById('log').prepend(d);
+  if (document.getElementById('log').children.length > 30) document.getElementById('log').lastChild.remove();
+}
+
+// 键盘事件
+document.addEventListener('keydown', e => {
+  state.keys[e.key.toLowerCase()] = true;
+  document.getElementById('keys').textContent = '按键: ' + e.key;
+  log('keydown: ' + e.key, 'key');
+});
+document.addEventListener('keyup', e => {
+  state.keys[e.key.toLowerCase()] = false;
+});
+
+// 移动循环
+setInterval(() => {
+  if (!state.player || !state.running) return;
+  const speed = 0.3;
+  let moved = false;
+  let { x, y } = state.player;
+  if (state.keys['w'] || state.keys['arrowup']) { y -= speed; moved = true; }
+  if (state.keys['s'] || state.keys['arrowdown']) { y += speed; moved = true; }
+  if (state.keys['a'] || state.keys['arrowleft']) { x -= speed; moved = true; }
+  if (state.keys['d'] || state.keys['arrowright']) { x += speed; moved = true; }
+  if (moved) {
+    x = Math.max(2, Math.min(98, x));
+    y = Math.max(2, Math.min(78, y));
+    state.player.x = x;
+    state.player.y = y;
+    socket.emit('move', { x, y });
+  }
+}, 50);
+
+// 渲染
+function render() {
+  ctx.fillStyle = '#222';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (state.player) {
+    ctx.fillStyle = '#ffcc00';
+    ctx.beginPath();
+    ctx.arc(state.player.x * 48 - state.camera.x, state.player.y * 48 - state.camera.y, 20, 0, Math.PI * 2);
+    ctx.fill();
+    state.camera.x = state.player.x * 48 - canvas.width / 2;
+    state.camera.y = state.player.y * 48 - canvas.height / 2;
+    document.getElementById('pos').textContent = '位置: ' + state.player.x.toFixed(2) + ', ' + state.player.y.toFixed(2);
+  }
+  requestAnimationFrame(render);
+}
+render();
+
+// Socket
+socket.on('connect', () => log('connected'));
+socket.on('disconnect', () => log('disconnected'));
+
+socket.on('login_success', p => {
+  state.player = p;
+  state.running = true;
+  log('login: ' + p.username + ' x=' + p.x + ' y=' + p.y);
+  document.getElementById('status').textContent = '已登录: ' + p.username;
+});
+
+socket.on('classes_info', () => {});
+socket.on('equip_info', () => {});
+socket.on('dungeon_info', () => {});
+socket.on('attack_result', () => {});
+socket.on('player_damaged', () => {});
+
+socket.on('world_state', data => {
+  if (state.player) {
+    const me = data.players.find(p => p.id === state.player.id);
+    if (me) {
+      state.player.x = me.x;
+      state.player.y = me.y;
+      log('server pos: ' + me.x.toFixed(2) + ', ' + me.y.toFixed(2));
+    }
+  }
+});
+
+// 登录
+socket.emit('login', { username: 'minimal_test', playerClass: 'warrior' });
+log('已发送登录请求...');
+</script>
+</body>
+</html>

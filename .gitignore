@@ -1,0 +1,30 @@
+# Node modules
+node_modules/
+
+# Database
+*.db
+*.db-journal
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+
+# Test results
+test-results/
+playwright-report/
+
+# Temporary files
+*.tmp
+*.temp
