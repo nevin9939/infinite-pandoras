@@ -3,8 +3,9 @@ const http = require('http');
 const { Server } = require('socket.io');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { createGameEngine } = require('./game/engine');
-const { initDB } = require('./db/database');
+const { initDB, createAccount, getAccount, getCharacters, createCharacter } = require('./db/database');
 
 const app = express();
 const server = http.createServer(app);
@@ -27,10 +28,43 @@ async function start() {
   engine.initWorldBosses();
 
   io.on('connection', (socket) => {
-    socket.on('login', ({ username, playerClass }) => {
-      if (!username || username.length < 2) return;
-      const player = engine.registerPlayer(socket.id, username, playerClass);
-      socket.emit('login_success', player);
+    // 注册账号
+    socket.on('register', ({ username, password }) => {
+      if (!username || username.length < 2) { socket.emit('register_result', { error: '用户名至少2个字符' }); return; }
+      if (!password || password.length < 4) { socket.emit('register_result', { error: '密码至少4个字符' }); return; }
+      const existing = getAccount(db, username);
+      if (existing) { socket.emit('register_result', { error: '用户名已存在' }); return; }
+      const hash = crypto.createHash('sha256').update(password).digest('hex');
+      const account = createAccount(db, username, hash);
+      socket.emit('register_result', { success: true, account: { id: account.id, username: account.username } });
+    });
+
+    // 登录账号
+    socket.on('login', ({ username, password }) => {
+      if (!username || !password) { socket.emit('login_result', { error: '请输入用户名和密码' }); return; }
+      const account = getAccount(db, username);
+      if (!account) { socket.emit('login_result', { error: '用户名不存在' }); return; }
+      const hash = crypto.createHash('sha256').update(password).digest('hex');
+      if (account.password !== hash) { socket.emit('login_result', { error: '密码错误' }); return; }
+      const characters = getCharacters(db, account.id);
+      socket.emit('login_result', { success: true, account: { id: account.id, username: account.username }, characters });
+    });
+
+    // 创建角色
+    socket.on('create_character', ({ accountId, name, playerClass }) => {
+      if (!name || name.length < 2) { socket.emit('create_character_result', { error: '角色名称至少2个字符' }); return; }
+      const character = createCharacter(db, accountId, name, playerClass || 'warrior');
+      socket.emit('create_character_result', { success: true, character });
+      // 通知其他客户端更新角色列表
+      const characters = getCharacters(db, accountId);
+      socket.emit('character_list', { characters });
+    });
+
+    // 选择角色进入游戏
+    socket.on('select_character', (characterId) => {
+      const player = engine.registerPlayer(socket.id, characterId);
+      if (!player) { socket.emit('select_character_result', { error: '角色不存在' }); return; }
+      socket.emit('select_character_result', { success: true, player });
       socket.emit('classes_info', engine.CLASSES);
       socket.emit('equip_info', { slots: engine.EQUIPMENT_SLOTS, qualityNames: engine.QUALITY_NAMES, qualityColors: engine.QUALITY_COLORS, equipDb: engine.EQUIPMENT_DB, setInfo: engine.EQUIPMENT_SETS });
       socket.emit('zodiac_sets', engine.ZODIAC_SETS);
@@ -40,6 +74,12 @@ async function start() {
       const { SHOP_ITEMS } = require('./game/engine');
       socket.emit('shop_items', { potion: SHOP_ITEMS.potion, material: SHOP_ITEMS.material, weapon: SHOP_ITEMS.weapon, armor: SHOP_ITEMS.armor, jewelry: SHOP_ITEMS.jewelry });
       socket.broadcast.emit('player_joined', { id: player.id, username: player.username, x: player.x, y: player.y, level: player.level, hp: player.hp, max_hp: player.max_hp, class: player.class });
+    });
+
+    // 获取角色列表（重新登录时）
+    socket.on('get_characters', (accountId) => {
+      const characters = getCharacters(db, accountId);
+      socket.emit('character_list', { characters });
     });
 
     socket.on('move', data => engine.movePlayer(socket.id, data.x, data.y));

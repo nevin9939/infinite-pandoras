@@ -2491,7 +2491,9 @@ document.addEventListener('click', e => {
 socket.on('connect', () => { state.connected = true; const d = document.getElementById('conn-dot'); if(d) d.className = 'connected'; const t = document.getElementById('conn-text'); if(t) t.textContent = '已连接'; });
 socket.on('disconnect', () => { state.connected = false; const d = document.getElementById('conn-dot'); if(d) d.className = 'disconnected'; const t = document.getElementById('conn-text'); if(t) t.textContent = '已断开'; });
 
-socket.on('login_success', player => {
+socket.on('select_character_result', data => {
+  if (!data.success) { addMessage('角色加载失败', 'msg-death'); return; }
+  const player = data.player;
   state.player = player; state.running = true;
   state.currentMap = player.map_id || 'bichon';
   state.player.exp = player.exp || 0;
@@ -2515,6 +2517,39 @@ socket.on('login_success', player => {
   updateSkillBar(); updateAttrPanel(); updateEquipPanel(); updateInventory(); updateHUD();
   if (state.afkMode) { startAfkLoop(); document.getElementById('afk-btn').style.borderColor = '#40c040'; }
   checkQuestProgress();
+});
+
+// 登录结果
+socket.on('login_result', data => {
+  if (data.error) { document.getElementById('login-error').textContent = data.error; return; }
+  state.account = data.account;
+  document.getElementById('login-step-account').style.display = 'none';
+  document.getElementById('login-step-character').style.display = 'block';
+  document.getElementById('account-welcome').textContent = `欢迎，${data.account.username}`;
+  renderCharacterList(data.characters || []);
+});
+
+// 注册结果
+socket.on('register_result', data => {
+  if (data.error) { document.getElementById('login-error').textContent = data.error; return; }
+  if (data.success) {
+    document.getElementById('login-error').textContent = '注册成功，请登录';
+    document.getElementById('login-error').style.color = '#40c040';
+  }
+});
+
+// 创建角色结果
+socket.on('create_character_result', data => {
+  if (data.error) { document.getElementById('char-error').textContent = data.error; return; }
+  if (data.success) {
+    document.getElementById('char-error').textContent = '';
+    document.getElementById('char-name').value = '';
+  }
+});
+
+// 角色列表更新
+socket.on('character_list', data => {
+  renderCharacterList(data.characters || []);
 });
 
 socket.on('classes_info', c => { state.classes = c; updateSkillBar(); });
@@ -3353,12 +3388,98 @@ document.querySelectorAll('.class-option').forEach(el => {
 });
 
 // ===== 登录 =====
+// ===== 登录相关 =====
+let selectedCharClass = 'warrior';
+
 document.getElementById('login-btn').addEventListener('click', doLogin);
-document.getElementById('username').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-username').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('register-btn').addEventListener('click', doRegister);
+document.getElementById('back-to-login-btn').addEventListener('click', () => {
+  document.getElementById('login-step-account').style.display = 'block';
+  document.getElementById('login-step-character').style.display = 'none';
+  document.getElementById('login-error').textContent = '';
+});
+document.getElementById('create-char-btn').addEventListener('click', doCreateCharacter);
+
+// 职业选择（角色创建时）
+document.querySelectorAll('.class-option').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.class-option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedCharClass = el.dataset.class;
+  });
+});
+
 function doLogin() {
-  const u = document.getElementById('username').value.trim();
-  if (u.length < 2) { alert('至少2个字符'); return; }
-  socket.emit('login', {username: u, playerClass: state.selectedClass});
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (username.length < 2) { document.getElementById('login-error').textContent = '用户名至少2个字符'; return; }
+  if (!password) { document.getElementById('login-error').textContent = '请输入密码'; return; }
+  document.getElementById('login-error').textContent = '';
+  socket.emit('login', { username, password });
+}
+
+function doRegister() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (username.length < 2) { document.getElementById('login-error').textContent = '用户名至少2个字符'; return; }
+  if (password.length < 4) { document.getElementById('login-error').textContent = '密码至少4个字符'; return; }
+  document.getElementById('login-error').textContent = '';
+  socket.emit('register', { username, password });
+}
+
+function doCreateCharacter() {
+  const name = document.getElementById('char-name').value.trim();
+  if (name.length < 2) { document.getElementById('char-error').textContent = '角色名称至少2个字符'; return; }
+  document.getElementById('char-error').textContent = '';
+  socket.emit('create_character', { accountId: state.account.id, name, playerClass: selectedCharClass });
+}
+
+function renderCharacterList(characters) {
+  const list = document.getElementById('character-list');
+  const createDiv = document.getElementById('character-create');
+  list.innerHTML = '';
+
+  if (characters.length === 0) {
+    list.innerHTML = '<p style="color:#888;font-size:13px;text-align:center;">暂无角色，请创建新角色</p>';
+    createDiv.style.display = 'block';
+    return;
+  }
+
+  createDiv.style.display = 'none';
+
+  const classIcons = { warrior: '⚔', mage: '🔮', taoist: '☯' };
+  const classNames = { warrior: '战士', mage: '法师', taoist: '道士' };
+
+  characters.forEach(ch => {
+    const card = document.createElement('div');
+    card.className = 'char-card';
+    card.innerHTML = `
+      <span class="char-icon">${classIcons[ch.class] || '⚔'}</span>
+      <div class="char-info">
+        <div class="char-name">${ch.name}</div>
+        <div class="char-meta">
+          <span class="char-class">${classNames[ch.class] || ch.class}</span> ·
+          <span>Lv.${ch.level}</span> ·
+          <span>${ch.gold || 0} 金币</span>
+        </div>
+      </div>
+    `;
+    card.addEventListener('click', () => {
+      socket.emit('select_character', ch.id);
+    });
+    list.appendChild(card);
+  });
+
+  // 显示创建新角色按钮
+  const createBtn = document.createElement('button');
+  createBtn.className = 'btn-secondary';
+  createBtn.textContent = '+ 创建新角色';
+  createBtn.style.width = '100%';
+  createBtn.style.marginTop = '8px';
+  createBtn.addEventListener('click', () => { createDiv.style.display = 'block'; });
+  list.appendChild(createBtn);
 }
 
 // ===== 世界BOSS面板 =====

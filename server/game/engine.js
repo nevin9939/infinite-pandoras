@@ -1,4 +1,4 @@
-const { saveDB } = require('../db/database');
+const { saveDB, getCharacter, saveCharacter } = require('../db/database');
 const { v4: uuidv4 } = require('uuid');
 
 // ===== 副本定义 =====
@@ -1047,79 +1047,23 @@ function createGameEngine(db, io) {
     return item;
   }
 
-  function registerPlayer(socketId, username, playerClass = 'warrior') {
-    // 删除旧的同名玩家（避免多个玩家对象导致数据不同步）
-    for (const [sid, p] of players) {
-      if (p.username === username) {
-        players.delete(sid);
-      }
-    }
+  function registerPlayer(socketId, characterId) {
+    const character = getCharacter(db, characterId);
+    if (!character) return null;
 
-    const row = db.exec(`SELECT * FROM players WHERE username = '${username}'`);
-
-    if (row.length > 0 && row[0].columns.length > 0) {
-      const cols = row[0].columns;
-      const vals = row[0].values[0];
-      const player = {};
-      cols.forEach((c, i) => { player[c] = vals[i]; });
-      player.hp = player.max_hp;
-      player.mp = player.max_mp;
-      player.socketId = socketId;
-      player.skills = JSON.parse(player.skills || '[]');
-      player.equipment = JSON.parse(player.equipment || '{}');
-      player.inventory = JSON.parse(player.inventory || '[]');
-      player.quest_state = JSON.parse(player.quest_state || '{}');
-      player.storage = JSON.parse(player.storage || '[]');
-      player.cultivationRealm = player.cultivation_realm || 0;
-      player.cultivationStage = player.cultivation_stage || 1;
-      players.set(socketId, player);
-      recalcStats(player);
-      savePlayer(player);
-      return player;
-    }
-
-    const cls = CLASSES[playerClass];
-    const id = uuidv4();
-    const player = {
-      id, username, socketId, class: playerClass,
-      x: 50, y: 50,
-      level: 1, exp: 0,
-      hp: cls.baseHp, max_hp: cls.baseHp,
-      mp: cls.baseMp, max_mp: cls.baseMp,
-      attack: cls.baseAtk, defense: cls.baseDef,
-      gold: 0,
-      map_id: 'bichon',
-      skills: [],
-      equipment: {},
-      inventory: [],
-      attackCooldown: 0,
-    };
-
-    const emptyObj = '{}', emptyArr = '[]';
-    db.run(`INSERT INTO players (id, username, class, x, y, level, exp, hp, max_hp, mp, max_mp, attack, defense, gold, map_id, skills, equipment, inventory)
-      VALUES ('${id}', '${username}', '${playerClass}', 50, 50, 1, 0, ${player.hp}, ${player.max_hp}, ${player.mp}, ${player.max_mp}, ${player.attack}, ${player.defense}, 0, 'bichon', '${emptyArr}', '${emptyObj}', '${emptyArr}')`);
-    saveDB(db);
-
-    players.set(socketId, player);
-    return player;
+    players.set(socketId, character);
+    character.socketId = socketId;
+    character.hp = character.max_hp;
+    character.mp = character.max_mp;
+    character.cultivationRealm = character.cultivation_realm || 0;
+    character.cultivationStage = character.cultivation_stage || 1;
+    recalcStats(character);
+    savePlayer(character);
+    return character;
   }
 
   function savePlayer(player) {
-    const skillsJson = JSON.stringify(player.skills || []);
-    const equipJson = JSON.stringify(player.equipment || {});
-    const invJson = JSON.stringify(player.inventory || []);
-    const questJson = JSON.stringify(player.quest_state || {});
-    const storageJson = JSON.stringify(player.storage || []);
-    db.run(`UPDATE players SET x=${player.x}, y=${player.y}, level=${player.level},
-      exp=${player.exp}, hp=${player.hp}, max_hp=${player.max_hp},
-      mp=${player.mp}, max_mp=${player.max_mp}, attack=${player.attack},
-      defense=${player.defense}, gold=${player.gold}, class='${player.class}',
-      title='${player.title || ''}',
-      skills='${skillsJson}', equipment='${equipJson}', inventory='${invJson}',
-      quest_state='${questJson}', storage='${storageJson}',
-      cultivation_realm=${player.cultivationRealm || 0}, cultivation_stage=${player.cultivationStage || 1},
-      last_save=CURRENT_TIMESTAMP WHERE id='${player.id}'`);
-    saveDB(db);
+    saveCharacter(db, player);
   }
 
   function movePlayer(socketId, x, y) {

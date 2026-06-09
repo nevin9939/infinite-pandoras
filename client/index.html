@@ -9,18 +9,38 @@
 <body>
   <div id="login-screen">
     <div class="login-box">
-      <h1>无限世界</h1>
-      <p class="subtitle">网页版</p>
-      <input type="text" id="username" placeholder="输入角色名称" maxlength="16" autofocus>
-      <div id="class-select">
-        <p class="select-label">选择职业</p>
-        <div class="class-options">
-          <div class="class-option selected" data-class="warrior"><div class="class-icon warrior-icon">⚔</div><div class="class-name">战士</div><div class="class-desc">高血量·近战·强防御</div></div>
-          <div class="class-option" data-class="mage"><div class="class-icon mage-icon">🔮</div><div class="class-name">法师</div><div class="class-desc">高魔法·远程·强输出</div></div>
-          <div class="class-option" data-class="taoist"><div class="class-icon taoist-icon">☯</div><div class="class-name">道士</div><div class="class-desc">均衡·治疗·召唤</div></div>
+      <!-- 步骤1: 账号登录/注册 -->
+      <div id="login-step-account">
+        <h1>无限世界</h1>
+        <p class="subtitle">网页版</p>
+        <input type="text" id="login-username" placeholder="输入用户名" maxlength="16" autofocus>
+        <input type="password" id="login-password" placeholder="输入密码" maxlength="32">
+        <div class="login-btns">
+          <button id="login-btn" class="btn-primary">登录</button>
+          <button id="register-btn" class="btn-secondary">注册</button>
         </div>
+        <p id="login-error" class="error-msg"></p>
       </div>
-      <button id="login-btn">开始游戏</button>
+      <!-- 步骤2: 角色选择/创建 -->
+      <div id="login-step-character" style="display:none;">
+        <h2>选择角色</h2>
+        <p class="subtitle" id="account-welcome"></p>
+        <div id="character-list"></div>
+        <div id="character-create" style="display:none;">
+          <input type="text" id="char-name" placeholder="输入角色名称" maxlength="16">
+          <div id="char-class-select">
+            <p class="select-label">选择职业</p>
+            <div class="class-options">
+              <div class="class-option selected" data-class="warrior"><div class="class-icon warrior-icon">⚔</div><div class="class-name">战士</div><div class="class-desc">高血量·近战·强防御</div></div>
+              <div class="class-option" data-class="mage"><div class="class-icon mage-icon">🔮</div><div class="class-name">法师</div><div class="class-desc">高魔法·远程·强输出</div></div>
+              <div class="class-option" data-class="taoist"><div class="class-icon taoist-icon">☯</div><div class="class-name">道士</div><div class="class-desc">均衡·治疗·召唤</div></div>
+            </div>
+          </div>
+          <button id="create-char-btn">创建角色</button>
+          <p id="char-error" class="error-msg"></p>
+        </div>
+        <button id="back-to-login-btn" class="btn-link">返回登录</button>
+      </div>
     </div>
   </div>
 
